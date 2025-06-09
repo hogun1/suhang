@@ -31,12 +31,18 @@ import pandas as pd
 
 @st.cache_data
 def load_data():
+    # GitHub raw URL 또는 로컬 data/library_loans.csv
     df = pd.read_csv('data/library_loans.csv', encoding='utf-8', header=0)
     return df
 
 df = load_data()
 
-# → 여기에 컬럼 리스트 출력
-st.write("### 데이터 컬럼 목록:", df.columns.tolist())
+# ▶️ 이 부분을 추가하세요:
+st.write("**⚙️ 데이터 컬럼 목록:**", df.columns.tolist())
+# —————————————
 
-# 이하 기존 코드...
+# 이후 기존 코드...
+selected_year = st.selectbox(
+    "연도를 선택하세요:",
+    sorted(df['연도'].unique(), reverse=True)   # 아직 수정 전이지만, 
+)
