@@ -26,4 +26,14 @@ fig, ax = plt.subplots(figsize=(10, 5))
 sns.barplot(x='KDC분류', y='대출건수', data=filtered, ax=ax)
 plt.xticks(rotation=45)
 st.pyplot(fig)
+import streamlit as st
+import pandas as pd
+
+@st.cache_data
+def load_data():
+    df = pd.read_csv('data/library_loans.csv', encoding='utf-8')
+    st.write("### 데이터 컬럼 목록", df.columns.tolist())
+    return df
+
+df = load_data()
 
