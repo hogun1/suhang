@@ -31,9 +31,12 @@ import pandas as pd
 
 @st.cache_data
 def load_data():
-    df = pd.read_csv('data/library_loans.csv', encoding='utf-8')
-    st.write("### 데이터 컬럼 목록", df.columns.tolist())
+    df = pd.read_csv('data/library_loans.csv', encoding='utf-8', header=0)
     return df
 
 df = load_data()
 
+# → 여기에 컬럼 리스트 출력
+st.write("### 데이터 컬럼 목록:", df.columns.tolist())
+
+# 이하 기존 코드...
