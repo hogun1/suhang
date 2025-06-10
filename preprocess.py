@@ -69,5 +69,5 @@ df_tidy = df_tidy.dropna(subset=["loan_count"])
 df_tidy["loan_count"] = df_tidy["loan_count"].astype(int)
 
 # 7) CSV로 저장
-df_tidy.to_csv("data/library_loans_tidy.csv", index=False, encoding="utf-8")
-print("✅ data/library_loans_tidy.csv 생성 완료")
+df_tidy.to_csv("data/서울시 서북권 공공도서관 KDC 분류별 연간 대출 현황.csv", index=False, encoding="utf-8")
+print("data/서울시 서북권 공공도서관 KDC 분류별 연간 대출 현황.csv 생성 완료")
