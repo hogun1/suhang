@@ -13,7 +13,7 @@ plt.rcParams['axes.unicode_minus'] = False
 def load_data():
     # Excel로 읽되, 2행(0-based idx=1)을 컬럼 헤더로
     df = pd.read_excel(
-        'data/서울도서관 도서분야별성별 대출 통계_2024) .csv'.replace('.csv','.xlsx'),
+        'data/서울도서관 도서분야별성별 대출 통계_2024).csv'.replace('.csv','.xlsx'),
         header=1,
         engine='openpyxl'
     )
