@@ -34,4 +34,5 @@ cd suhang
 pip install -r requirements.txt
 
 # 3. Streamlit 앱 실행
+st.write("컬럼명 확인:", df.columns.tolist())
 
