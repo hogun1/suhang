@@ -34,14 +34,4 @@ cd suhang
 pip install -r requirements.txt
 
 # 3. Streamlit 앱 실행
-@st.cache_data
-def load_data():
-    # 첫 번째 행은 설명이므로 skip, 두 번째 행부터 컬럼명으로 인식
-    df = pd.read_csv(
-        'data/서울도서관 도서분야별성별 대출 통계_2024) .csv',
-        encoding='cp949',
-        skiprows=1  # ✅ 핵심 해결
-    )
-    df.dropna(inplace=True)
-    return df
 
