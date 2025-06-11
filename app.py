@@ -1,50 +1,104 @@
+# app.py
 import streamlit as st
 import pandas as pd
 import seaborn as sns
 import matplotlib.pyplot as plt
+from sklearn.cluster import KMeans
 
-st.set_page_config(page_title="도서 대출 데이터 분석", layout="wide")
-st.title("📚 서울시 서북권 공공도서관 대출 현황 분석")
-
-# CSV 파일 경로 (GitHub raw 링크)
-csv_url = "https://raw.githubusercontent.com/hogun1/suhang/main/data/%EC%84%9C%EC%9A%B8%EC%8B%9C%20%EC%84%9C%EB%B6%81%EA%B6%8C%20%EA%B3%B5%EA%B3%B5%EB%8F%84%EC%84%9C%EA%B4%80%20KDC%20%EB%B6%84%EB%A5%98%EB%B3%84%20%EC%97%B0%EA%B0%84%20%EB%8C%80%EC%B6%9C%20%ED%98%84%ED%99%A9.csv"
+st.set_page_config(page_title="서울도서관 분야별·성별 대출 분석", layout="wide")
 
 @st.cache_data
 def load_data():
-    return pd.read_csv(csv_url, encoding='cp949')  # ✅ 한글 인코딩 처리
+    # 1) 엑셀 읽기 (skiprows=1 해서 두 번째 행을 헤더로 사용)
+    df = pd.read_excel(
+        "data/2b279523-9118-463e-a125-7ee8e4055776.xlsx",
+        sheet_name="Sheet1",
+        skiprows=1,
+        engine="openpyxl"
+    )
+    # 2) 컬럼명 정리
+    df = df.rename(columns={"Unnamed: 0": "성별"})
+    # 3) 첫 행(남성/여성 분리)에서 성별이 NaN인 경우 앞 성별 채움
+    df["성별"] = df["성별"].ffill()
+    # 4) 불필요한 빈 행 제거
+    df = df.dropna(subset=["연령대"])
+    return df
 
-# 데이터 불러오기
 df = load_data()
 
-# 컬럼명 출력 (디버깅용)
-st.write("📌 컬럼명:", df.columns)
+st.title("📚 서울도서관 분야별·성별 대출 통계 (2024년)")
 
-# 컬럼명 정리: '년도', 'KDC', '대출권수'를 사용해야 할 수도 있음
-# 실제 컬럼명이 맞는지 꼭 확인!
-st.subheader("🔍 데이터 미리 보기")
-st.dataframe(df.head())
+# — 사이드바 필터
+st.sidebar.header("필터")
+genders = ["전체"] + df["성별"].unique().tolist()
+sel_gender = st.sidebar.selectbox("성별 선택", genders)
+ages    = ["전체"] + df["연령대"].unique().tolist()
+sel_age    = st.sidebar.selectbox("연령대 선택", ages)
 
-# 연도와 KDC 분류 기준으로 피벗 테이블 생성
-st.subheader("📊 연도별 KDC 분류 대출량")
-pivot_df = df.pivot_table(index='년도', columns='KDC', values='대출권수', aggfunc='sum')  # ✅ '연도' → '년도'
+# 1) 데이터 필터링
+df_filtered = df.copy()
+if sel_gender != "전체":
+    df_filtered = df_filtered[df_filtered["성별"] == sel_gender]
+if sel_age != "전체":
+    df_filtered = df_filtered[df_filtered["연령대"] == sel_age]
 
-# 시각화
-fig, ax = plt.subplots(figsize=(12, 6))
-sns.lineplot(data=pivot_df, marker="o", ax=ax)
-ax.set_title("연도별 KDC 분류 대출권수 추이", fontsize=16)
-ax.set_xlabel("연도")
-ax.set_ylabel("대출권수")
-ax.legend(title="KDC 분류")
+# 2) Melt to long for classification visualization
+class_cols = [c for c in df_filtered.columns if c not in ["성별", "연령대", "합계"]]
+df_long = df_filtered.melt(
+    id_vars=["성별", "연령대"],
+    value_vars=class_cols,
+    var_name="분야",
+    value_name="대출권수"
+)
+
+# 3) 분야별 대출 건수 바차트
+st.subheader("🔢 분야별 대출 건수")
+fig, ax = plt.subplots(figsize=(10, 5))
+sns.barplot(
+    data=df_long,
+    x="분야",
+    y="대출권수",
+    hue="성별",
+    estimator=sum,
+    ax=ax
+)
+plt.xticks(rotation=45)
 st.pyplot(fig)
 
-# 특정 KDC 선택 후 연도별 변화 보기
-st.subheader("📈 특정 KDC 분류 선택 시 변화")
-kdc_options = df['KDC'].unique()
-selected_kdc = st.selectbox("KDC 분류를 선택하세요", kdc_options)
+# 4) 데이터 테이블 보기
+with st.expander("원본 데이터 보기"):
+    st.dataframe(df_filtered.reset_index(drop=True))
 
-filtered_df = df[df['KDC'] == selected_kdc]
+# 5) 머신러닝: KMeans 클러스터링 (옵션)
+if st.checkbox("클러스터링 결과 보기 (KMeans)"):
+    st.subheader("🤖 연령·성별 그룹 클러스터링")
+    # 피쳐로 분야별 대출권수 사용
+    X = df_filtered[class_cols].fillna(0)
+    # 클러스터 개수 입력
+    k = st.slider("클러스터 수 (k)", min_value=2, max_value=6, value=3)
+    model = KMeans(n_clusters=k, random_state=42)
+    labels = model.fit_predict(X)
+    df_clustered = df_filtered.copy()
+    df_clustered["cluster"] = labels.astype(str)
 
-fig2, ax2 = plt.subplots()
-sns.barplot(data=filtered_df, x='년도', y='대출권수', ax=ax2)
-ax2.set_title(f"{selected_kdc} 분류의 연도별 대출권수")
-st.pyplot(fig2)
+    # 클러스터별 그룹 요약
+    st.write("### 클러스터별 연령대·성별 조합")
+    st.dataframe(df_clustered.groupby("cluster")[["성별","연령대"]]
+                 .agg(lambda x: ", ".join(sorted(x.unique()))).reset_index())
+
+    # 클러스터 분포 시각화
+    st.write("### 클러스터별 대출 분포(평균)")
+    cluster_means = df_clustered.groupby("cluster")[class_cols].mean().reset_index().melt(
+        id_vars="cluster", var_name="분야", value_name="평균대출권수"
+    )
+    fig2, ax2 = plt.subplots(figsize=(10, 5))
+    sns.lineplot(
+        data=cluster_means,
+        x="분야",
+        y="평균대출권수",
+        hue="cluster",
+        marker="o",
+        ax=ax2
+    )
+    plt.xticks(rotation=45)
+    st.pyplot(fig2)
