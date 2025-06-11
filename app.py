@@ -1,104 +1,59 @@
-# app.py
 import streamlit as st
 import pandas as pd
-import seaborn as sns
 import matplotlib.pyplot as plt
-from sklearn.cluster import KMeans
+import seaborn as sns
+import os
 
-st.set_page_config(page_title="서울도서관 분야별·성별 대출 분석", layout="wide")
+# 한글 폰트 설정 (Mac/Windows/Linux 호환)
+plt.rcParams['font.family'] = 'Malgun Gothic' if os.name == 'nt' else 'AppleGothic'
+plt.rcParams['axes.unicode_minus'] = False
 
+# 데이터 불러오기 함수
 @st.cache_data
 def load_data():
-    # 1) 엑셀 읽기 (skiprows=1 해서 두 번째 행을 헤더로 사용)
-    df = pd.read_excel(
-        "data/2b279523-9118-463e-a125-7ee8e4055776.xlsx",
-        sheet_name="Sheet1",
-        skiprows=1,
-        engine="openpyxl"
-    )
-    # 2) 컬럼명 정리
-    df = df.rename(columns={"Unnamed: 0": "성별"})
-    # 3) 첫 행(남성/여성 분리)에서 성별이 NaN인 경우 앞 성별 채움
-    df["성별"] = df["성별"].ffill()
-    # 4) 불필요한 빈 행 제거
-    df = df.dropna(subset=["연령대"])
+    df = pd.read_csv('data/서울도서관 도서분야별성별 대출 통계_2024) .csv', encoding='utf-8')
+    df.dropna(inplace=True)
     return df
 
+# Streamlit 앱 시작
+st.title("📚 서울도서관 도서 분야별 성별 대출 통계 (2024)")
+st.markdown("이 대시보드는 서울도서관의 2024년 도서 대출 데이터를 분석합니다.")
+
+# 데이터 불러오기
 df = load_data()
 
-st.title("📚 서울도서관 분야별·성별 대출 통계 (2024년)")
+# 데이터 확인
+if st.checkbox("데이터프레임 보기"):
+    st.dataframe(df)
 
-# — 사이드바 필터
-st.sidebar.header("필터")
-genders = ["전체"] + df["성별"].unique().tolist()
-sel_gender = st.sidebar.selectbox("성별 선택", genders)
-ages    = ["전체"] + df["연령대"].unique().tolist()
-sel_age    = st.sidebar.selectbox("연령대 선택", ages)
+# 성별 선택
+gender_option = st.radio("성별을 선택하세요:", ('남성', '여성'))
 
-# 1) 데이터 필터링
-df_filtered = df.copy()
-if sel_gender != "전체":
-    df_filtered = df_filtered[df_filtered["성별"] == sel_gender]
-if sel_age != "전체":
-    df_filtered = df_filtered[df_filtered["연령대"] == sel_age]
+# 선택된 성별 컬럼 필터링
+gender_column = '남성' if gender_option == '남성' else '여성'
 
-# 2) Melt to long for classification visualization
-class_cols = [c for c in df_filtered.columns if c not in ["성별", "연령대", "합계"]]
-df_long = df_filtered.melt(
-    id_vars=["성별", "연령대"],
-    value_vars=class_cols,
-    var_name="분야",
-    value_name="대출권수"
-)
-
-# 3) 분야별 대출 건수 바차트
-st.subheader("🔢 분야별 대출 건수")
-fig, ax = plt.subplots(figsize=(10, 5))
-sns.barplot(
-    data=df_long,
-    x="분야",
-    y="대출권수",
-    hue="성별",
-    estimator=sum,
-    ax=ax
-)
+# 도서 분야별 대출 시각화
+st.subheader(f"📊 분야별 {gender_option} 대출 건수")
+fig, ax = plt.subplots(figsize=(10, 6))
+sns.barplot(data=df, x='도서분야', y=gender_column, ax=ax, palette='Set2')
 plt.xticks(rotation=45)
 st.pyplot(fig)
 
-# 4) 데이터 테이블 보기
-with st.expander("원본 데이터 보기"):
-    st.dataframe(df_filtered.reset_index(drop=True))
+# 성별 비교 시각화
+st.subheader("👥 성별 대출 비교")
+fig2, ax2 = plt.subplots(figsize=(10, 6))
+df_melted = df.melt(id_vars='도서분야', value_vars=['남성', '여성'], var_name='성별', value_name='대출건수')
+sns.barplot(data=df_melted, x='도서분야', y='대출건수', hue='성별', ax=ax2, palette='pastel')
+plt.xticks(rotation=45)
+st.pyplot(fig2)
 
-# 5) 머신러닝: KMeans 클러스터링 (옵션)
-if st.checkbox("클러스터링 결과 보기 (KMeans)"):
-    st.subheader("🤖 연령·성별 그룹 클러스터링")
-    # 피쳐로 분야별 대출권수 사용
-    X = df_filtered[class_cols].fillna(0)
-    # 클러스터 개수 입력
-    k = st.slider("클러스터 수 (k)", min_value=2, max_value=6, value=3)
-    model = KMeans(n_clusters=k, random_state=42)
-    labels = model.fit_predict(X)
-    df_clustered = df_filtered.copy()
-    df_clustered["cluster"] = labels.astype(str)
+# 총합 출력
+st.subheader("📈 전체 성별 대출 건수 총합")
+total_male = df['남성'].sum()
+total_female = df['여성'].sum()
+st.write(f"**남성 대출 총합:** {total_male:,}권")
+st.write(f"**여성 대출 총합:** {total_female:,}권")
 
-    # 클러스터별 그룹 요약
-    st.write("### 클러스터별 연령대·성별 조합")
-    st.dataframe(df_clustered.groupby("cluster")[["성별","연령대"]]
-                 .agg(lambda x: ", ".join(sorted(x.unique()))).reset_index())
-
-    # 클러스터 분포 시각화
-    st.write("### 클러스터별 대출 분포(평균)")
-    cluster_means = df_clustered.groupby("cluster")[class_cols].mean().reset_index().melt(
-        id_vars="cluster", var_name="분야", value_name="평균대출권수"
-    )
-    fig2, ax2 = plt.subplots(figsize=(10, 5))
-    sns.lineplot(
-        data=cluster_means,
-        x="분야",
-        y="평균대출권수",
-        hue="cluster",
-        marker="o",
-        ax=ax2
-    )
-    plt.xticks(rotation=45)
-    st.pyplot(fig2)
+# 피드백
+st.markdown("---")
+st.info("데이터 출처: 서울도서관 공공 데이터")
