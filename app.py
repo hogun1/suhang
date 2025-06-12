@@ -1,10 +1,4 @@
 # app.py
-import matplotlib.font_manager as fm
-
-# 설치된 폰트 출력
-font_list = [font.name for font in fm.fontManager.ttflist]
-font_list
-
 import streamlit as st
 import pandas as pd
 import matplotlib.pyplot as plt
@@ -13,7 +7,7 @@ import os
 
 # 한글 폰트
 
-plt.rcParams['font.family'] = 'cmmi10'
+plt.rcParams['font.family'] = 'NanumGothic'
 @st.cache_data
 def load_data():
     path = "data/서울도서관 도서분야별성별 대출 통계_2024) .csv"
