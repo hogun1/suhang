@@ -1,4 +1,9 @@
 # app.py
+import matplotlib.font_manager as fm
+
+# 설치된 폰트 출력
+font_list = [font.name for font in fm.fontManager.ttflist]
+font_list
 import streamlit as st
 import pandas as pd
 import matplotlib.pyplot as plt
