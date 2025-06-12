@@ -6,6 +6,10 @@ import seaborn as sns
 import os
 
 # 한글 폰트
+import matplotlib.font_manager as fm
+font_path = '/app/fonts/NotoSansKR-Regular.otf'
+font_prop = fm.FontProperties(fname=font_path)
+plt.rc('font', family=font_prop.get_name('NanumGothic'))
 
 plt.rcParams['font.family'] = 'NanumGothic'
 @st.cache_data
