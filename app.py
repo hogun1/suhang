@@ -4,14 +4,21 @@ import pandas as pd
 import matplotlib.pyplot as plt
 import seaborn as sns
 import os
-
-# 한글 폰트
 import matplotlib.font_manager as fm
-font_path = '/app/fonts/NotoSansKR-Regular.otf'
-font_prop = fm.FontProperties(fname=font_path)
-plt.rc('font', family=font_prop.get_name('NanumGothic'))
 
-plt.rcParams['font.family'] = 'NanumGothic'
+# 1) 폰트 파일 경로 지정
+font_path = os.path.join(os.getcwd(), "data", "NanumGothic.otf")
+
+# 2) Matplotlib 폰트 매니저에 폰트 추가
+fm.fontManager.addfont(font_path)
+
+# 3) 폰트 프로퍼티 생성
+font_prop = fm.FontProperties(fname=font_path)
+
+# 4) 전역 rcParams에 적용
+plt.rcParams['font.family'] = font_prop.get_name()
+plt.rcParams['axes.unicode_minus'] = False
+
 @st.cache_data
 def load_data():
     path = "data/서울도서관 도서분야별성별 대출 통계_2024) .csv"
