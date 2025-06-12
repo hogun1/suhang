@@ -99,3 +99,61 @@ with tab3:
     plt.xticks(rotation=45)
     ax3.set_ylabel('총 대출 건수')
     st.pyplot(fig3)
+import streamlit as st
+import pandas as pd
+
+# --- 데이터 로드 & 전처리 (이전 load_data() 정의 그대로 쓰세요)
+
+@st.cache_data
+def load_data():
+    path = "data/서울도서관 도서분야별성별 대출 통계_2024) .csv"
+    encodings = ['cp949','utf-8','euc-kr','latin1']
+    for enc in encodings:
+        try:
+            df = pd.read_csv(path, encoding=enc, skiprows=1, header=0)
+            break
+        except:
+            continue
+    df.columns = df.columns.str.strip()
+    orig = df.columns.tolist()
+    df.columns = ['성별','연령대'] + orig[2:]
+    if '합계' in df.columns: df = df.drop(columns=['합계'])
+    df = df.dropna(subset=['연령대'])
+    return df
+
+df = load_data()
+
+# --- 추천을 위한 후보군 생성
+# melt long-form
+fields = [c for c in df.columns if c not in ['성별','연령대']]
+df_long = df.melt(
+    id_vars=['성별','연령대'],
+    value_vars=fields,
+    var_name='분야',
+    value_name='대출건수'
+).dropna()
+df_long['대출건수'] = pd.to_numeric(df_long['대출건수'], errors='coerce').fillna(0)
+
+# --- Streamlit UI
+st.title("📚 대출 분류 추천 시스템")
+
+# 사용자 입력
+st.sidebar.header("당신의 프로필")
+input_gender = st.sidebar.selectbox("성별을 선택하세요", ['남성','여성'])
+input_age    = st.sidebar.selectbox("연령대를 선택하세요", df['연령대'].unique().tolist())
+
+# 추천 버튼
+if st.sidebar.button("추천 받기"):
+    # 1) 해당 그룹 데이터 필터
+    subset = df_long[
+        (df_long['성별'] == input_gender) &
+        (df_long['연령대'] == input_age)
+    ]
+    # 2) 분야별 건수 합산
+    rec = subset.groupby('분야')['대출건수'].sum().reset_index()
+    # 3) 내림차순 정렬 후 상위 3개 추출
+    rec = rec.sort_values('대출건수', ascending=False).head(3)
+    
+    st.subheader(f"👤 {input_gender} / {input_age} 고객님께 추천드리는 분야 Top 3")
+    for i, row in rec.iterrows():
+        st.write(f"**{i+1}. {row['분야']}** (예상 대출 건수: {int(row['대출건수']):,} 권)")
