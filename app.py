@@ -6,9 +6,8 @@ import seaborn as sns
 import os
 
 # 한글 폰트
-plt.rcParams['font.family'] = 'Malgun Gothic' if os.name=='nt' else 'AppleGothic'
-plt.rcParams['axes.unicode_minus'] = False
 
+plt.rcParams['font.family'] = 'NanumGothic'
 @st.cache_data
 def load_data():
     path = "data/서울도서관 도서분야별성별 대출 통계_2024) .csv"
